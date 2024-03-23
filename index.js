@@ -13,12 +13,12 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-    origin: ["http://localhost:5173"],
+    origin: ["https://vlab.taawunakademi.com/"],
     methods: ["GET", "POST", "PUT"],
     credentials: true,
 }));
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "http://localhost:5173");
+    res.header("Access-Control-Allow-Origin", "https://vlab.taawunakademi.com/");
     next();
 });
 app.use(cookieParser());
@@ -39,6 +39,19 @@ const db = mysql.createConnection({
     password: "#R2S.artus!",
     database: "u243048577_artus_vlab",
 });
+
+// Reconnect function
+function mysql_reconnect(callback) {
+    db.connect(function(err) {
+        if (err) {
+            console.log('Error connecting to MySQL:', err);
+            setTimeout(mysql_reconnect(callback), 2000); // Retry connection after 2 seconds
+        } else {
+            console.log('Connected to MySQL');
+            callback();
+        }
+    });
+}
 
 // Helper Functions
 const hashPassword = (password, callback) => {
@@ -62,6 +75,13 @@ const verifyJWT = (req, res, next) => {
     }
 };
 
+// Execute query function with reconnection handling
+function executeQuery(sql, values, callback) {
+    mysql_reconnect(function() {
+        db.execute(sql, values, callback);
+    });
+}
+
 // Routes
 app.post('/register', (req, res) => {
     const { email, fullname, password } = req.body;
@@ -70,7 +90,7 @@ app.post('/register', (req, res) => {
             console.log(err);
             res.status(500).send("Kesalahan dalam hashing kata sandi!");
         } else {
-            db.execute(
+            executeQuery(
                 "INSERT INTO users (email, fullname, password) VALUES (?,?,?)",
                 [email, fullname, hash],
                 (err, result) => {
@@ -89,7 +109,7 @@ app.post('/register', (req, res) => {
 });
 
 function addLearningEntries(userId) {
-    db.query('SELECT id_class FROM classes', (err, classesResult) => {
+    executeQuery('SELECT id_class FROM classes', (err, classesResult) => {
         if (err) {
             console.log(err);
             return;
@@ -98,7 +118,7 @@ function addLearningEntries(userId) {
         classesResult.forEach(classRow => {
             const classId = classRow.id_class;
             const is_open = classId === 1 ? 1 : 0;
-            db.query(
+            executeQuery(
                 "INSERT INTO learning (id_user, id_class, status, learned, is_open) VALUES (?,?,?,?,?)",
                 [userId, classId, 0, 0, is_open],
                 (err, result) => {
@@ -127,7 +147,7 @@ app.get("/login", (req, res) => {
 
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
-    db.execute(
+    executeQuery(
         "SELECT * FROM users WHERE email = ?;",
         [email],
         (err, result) => {
@@ -192,7 +212,7 @@ app.get('/myclasses', (req, res) => {
         searchQuery = ` AND classes.class_name LIKE '%${searchName}%'`;
     }
 
-    db.query('SELECT COUNT(*) as total FROM classes', (err, totalResult) => {
+    executeQuery('SELECT COUNT(*) as total FROM classes', (err, totalResult) => {
         if (err) {
             console.log(err);
             res.status(500).json({
@@ -205,7 +225,7 @@ app.get('/myclasses', (req, res) => {
 
         const totalClasses = totalResult[0].total;
 
-        db.query(`
+        executeQuery(`
             SELECT 
                 classes.id_class, 
                 classes.class_name, 
@@ -272,7 +292,7 @@ app.get('/myclasses', (req, res) => {
 app.put('/updateProgress/:userId', (req, res) => {
     const userId = req.params.userId;
 
-    db.query('SELECT * FROM learning WHERE id_user = ?', [userId], (err, learningResults) => {
+    executeQuery('SELECT * FROM learning WHERE id_user = ?', [userId], (err, learningResults) => {
         if (err) {
             console.log(err);
             res.status(500).json({
@@ -304,7 +324,7 @@ app.put('/updateProgress/:userId', (req, res) => {
         });
         progress = ((done + ongoing * 0.5) / totalData) * 100;
 
-        db.query('UPDATE users SET progress = ? WHERE id_user = ?', [progress, userId], (err, updateResult) => {
+        executeQuery('UPDATE users SET progress = ? WHERE id_user = ?', [progress, userId], (err, updateResult) => {
             if (err) {
                 console.log(err);
                 res.status(500).json({
@@ -337,7 +357,7 @@ app.get('/status/:userId/:classId', (req, res) => {
         return;
     }
 
-    db.query('SELECT status FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, results) => {
+    executeQuery('SELECT status FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, results) => {
         if (err) {
             console.log(err);
             res.status(500).json({
@@ -382,7 +402,7 @@ app.put('/updateStatus/:userId/:classId', (req, res) => {
         return;
     }
 
-    db.query('SELECT status FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, result) => {
+    executeQuery('SELECT status FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, result) => {
         if (err) {
             console.log(err);
             res.status(500).json({
@@ -413,7 +433,7 @@ app.put('/updateStatus/:userId/:classId', (req, res) => {
             return;
         }
 
-        db.query('UPDATE learning SET status = ?, is_open = ? WHERE id_user = ? AND id_class = ?', [newStatus, 1, userId, classId], (err, updateResult) => {
+        executeQuery('UPDATE learning SET status = ?, is_open = ? WHERE id_user = ? AND id_class = ?', [newStatus, 1, userId, classId], (err, updateResult) => {
 
             if (err) {
                 console.log(err);
@@ -425,7 +445,7 @@ app.put('/updateStatus/:userId/:classId', (req, res) => {
                 return;
             }
 
-            db.query('SELECT learned FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, learnedResult) => {
+            executeQuery('SELECT learned FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, learnedResult) => {
                 if (err) {
                     console.log(err);
                     res.status(500).json({
@@ -462,7 +482,7 @@ app.get('/learning/:userId/:classId', (req, res) => {
         return;
     }
 
-    db.query('SELECT * FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, results) => {
+    executeQuery('SELECT * FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, results) => {
         if (err) {
             console.log(err);
             res.status(500).json({
@@ -505,7 +525,7 @@ app.put('/updateLearned/:userId/:classId', (req, res) => {
         return;
     }
 
-    db.query('SELECT status FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, result) => {
+    executeQuery('SELECT status FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, result) => {
         if (err) {
             console.log(err);
             res.status(500).json({
@@ -536,7 +556,7 @@ app.put('/updateLearned/:userId/:classId', (req, res) => {
             return;
         }
 
-        db.query('UPDATE learning SET learned = ? WHERE id_user = ? AND id_class = ?', [newLearnedValue, userId, classId], (err, updateResult) => {
+        executeQuery('UPDATE learning SET learned = ? WHERE id_user = ? AND id_class = ?', [newLearnedValue, userId, classId], (err, updateResult) => {
             if (err) {
                 console.log(err);
                 res.status(500).json({
@@ -557,7 +577,6 @@ app.put('/updateLearned/:userId/:classId', (req, res) => {
     });
 });
 
-
 app.get('/reflection/:userId/:classId', (req, res) => {
     const userId = req.params.userId;
     const classId = req.params.classId;
@@ -571,7 +590,7 @@ app.get('/reflection/:userId/:classId', (req, res) => {
         return;
     }
 
-    db.query('SELECT reflection FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, results) => {
+    executeQuery('SELECT reflection FROM learning WHERE id_user = ? AND id_class = ?', [userId, classId], (err, results) => {
         if (err) {
             console.log(err);
             res.status(500).json({
@@ -614,7 +633,7 @@ app.put('/reflection/:userId/:classId', (req, res) => {
         return;
     }
 
-    db.query('UPDATE learning SET reflection = ? WHERE id_user = ? AND id_class = ?', [newReflection, userId, classId], (err, updateResult) => {
+    executeQuery('UPDATE learning SET reflection = ? WHERE id_user = ? AND id_class = ?', [newReflection, userId, classId], (err, updateResult) => {
         if (err) {
             console.log(err);
             res.status(500).json({
@@ -632,7 +651,6 @@ app.put('/reflection/:userId/:classId', (req, res) => {
         });
     });
 });
-
 
 app.listen(3001, () => {
     console.log("running server");
