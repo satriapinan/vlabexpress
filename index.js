@@ -17,10 +17,6 @@ app.use(cors({
     methods: ["GET", "POST", "PUT"],
     credentials: true,
 }));
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "https://vlab.taawunakademi.com/");
-    next();
-});
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(session({
