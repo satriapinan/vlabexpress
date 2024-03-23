@@ -13,10 +13,14 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "startdev": "nodemon index.js"
   },
   "author": "",
   "license": "ISC",
   "description": "",
-  "homepage": "http://vlab.taawunakademi.com/"
+  "homepage": "http://vlab.taawunakademi.com/",
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
 }

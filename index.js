@@ -45,7 +45,7 @@ function mysql_reconnect(callback) {
     db.connect(function(err) {
         if (err) {
             console.log('Error connecting to MySQL:', err);
-            setTimeout(mysql_reconnect(callback), 2000); // Retry connection after 2 seconds
+            setTimeout(mysql_reconnect(callback), 500);
         } else {
             console.log('Connected to MySQL');
             callback();
