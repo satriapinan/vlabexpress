@@ -15,7 +15,6 @@ app.use(express.json());
 app.use(cors({
     origin: ["https://vlab.taawunakademi.com/"],
     methods: ["GET", "POST", "PUT"],
-    credentials: true,
 }));
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
