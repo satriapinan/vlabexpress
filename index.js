@@ -36,7 +36,7 @@ app.use(session({
 
 const db = mysql.createConnection({
     user: "u243048577_artus",
-    host: "https://vlabapi.taawunakademi.com",
+    host: "153.92.8.168",
     password: "#R2S.artus!",
     database: "u243048577_artus_vlab",
 });
