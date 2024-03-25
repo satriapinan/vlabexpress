@@ -1,11 +1,11 @@
-const express = require("express");
-const mysql = require("mysql2");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const cookieParser = require("cookie-parser");
-const session = require("express-session");
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+import express from 'express';
+import mysql from 'mysql2';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const saltRound = 10;
 const app = express();
@@ -36,7 +36,7 @@ app.use(session({
 
 const db = mysql.createConnection({
     user: "u243048577_artus",
-    host: "srv1157.hstgr.io",
+    host: "https://vlabapi.taawunakademi.com",
     password: "#R2S.artus!",
     database: "u243048577_artus_vlab",
 });
@@ -653,6 +653,4 @@ app.put('/reflection/:userId/:classId', (req, res) => {
     });
 });
 
-app.listen(3001, () => {
-    console.log("running server");
-});
+module.exports = app;
